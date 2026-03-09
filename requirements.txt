@@ -1,0 +1,8 @@
+flask
+prometheus-client
+httpx
+numpy
+pandas
+matplotlib
+statsmodels
+

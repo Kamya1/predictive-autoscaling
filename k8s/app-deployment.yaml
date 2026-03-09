@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autoscaling-app
+  namespace: autoscaling-experiments
+  labels:
+    app: autoscaling-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: autoscaling-app
+  template:
+    metadata:
+      labels:
+        app: autoscaling-app
+    spec:
+      containers:
+        - name: app
+          image: autoscaling-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: APP_NAME
+              value: "autoscaling-app"
+            - name: SLA_THRESHOLD_SECONDS
+              value: "0.3"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
