@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Predictive Auto-Scaling Simulation Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #050816;
+        --bg-elevated: #0b1020;
+        --accent: #4f46e5;
+        --accent-soft: rgba(79, 70, 229, 0.15);
+        --accent-strong: rgba(129, 140, 248, 0.4);
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --danger: #f97373;
+        --success: #4ade80;
+        --border-subtle: rgba(148, 163, 184, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top, #111827 0, #020617 55%);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 16px 40px;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .title-block h1 {
+        margin: 0 0 6px;
+        font-size: 1.8rem;
+        letter-spacing: 0.02em;
+      }
+
+      .title-block p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      select {
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text);
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        padding: 6px 18px;
+        font-size: 0.9rem;
+        outline: none;
+      }
+
+      select:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.7);
+      }
+
+      .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      button {
+        border-radius: 999px;
+        border: 1px solid transparent;
+        padding: 8px 18px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--accent);
+        color: white;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.45);
+        transition: transform 0.08s ease-out, box-shadow 0.08s ease-out,
+          background 0.12s ease-out, opacity 0.12s ease-out;
+      }
+
+      button.secondary {
+        background: transparent;
+        color: var(--text);
+        border-color: var(--border-subtle);
+        box-shadow: none;
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      button:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 26px rgba(79, 70, 229, 0.5);
+      }
+
+      button.secondary:not(:disabled):hover {
+        background: rgba(148, 163, 184, 0.08);
+        box-shadow: none;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 16px;
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .panel {
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), #020617);
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        padding: 14px 14px 10px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
+      }
+
+      .panel h2 {
+        margin: 0 0 10px;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      @media (max-width: 700px) {
+        .charts-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .chart-card {
+        background: radial-gradient(circle at top left, var(--accent-soft), #020617);
+        border-radius: 12px;
+        padding: 8px 8px 4px;
+        border: 1px solid rgba(30, 64, 175, 0.55);
+      }
+
+      .chart-title {
+        font-size: 0.8rem;
+        margin-bottom: 4px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      canvas {
+        width: 100%;
+        height: 160px;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      @media (max-width: 600px) {
+        .metrics-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .metric-card {
+        background: radial-gradient(circle at top right, var(--accent-soft), #020617);
+        border-radius: 12px;
+        padding: 10px 10px 8px;
+        border: 1px solid rgba(51, 65, 85, 0.9);
+      }
+
+      .metric-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 2px;
+      }
+
+      .metric-value {
+        font-size: 1.05rem;
+        font-weight: 600;
+      }
+
+      .metric-value.bad {
+        color: var(--danger);
+      }
+
+      .metric-value.good {
+        color: var(--success);
+      }
+
+      .metric-sub {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      .run-context {
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 2px 9px;
+        font-size: 0.75rem;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        margin-left: 6px;
+        background: rgba(15, 23, 42, 0.7);
+      }
+
+      .status {
+        font-size: 0.8rem;
+        margin-top: 4px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="title-block">
+          <h1>Predictive Auto-Scaling Simulation</h1>
+          <p>
+            Visualize how predictive vs reactive scaling respond to abrupt workload
+            changes.
+          </p>
+        </div>
+        <div>
+          <div class="controls">
+            <div class="control-group">
+              <label for="scenario-select">Scenario</label>
+              <select id="scenario-select">
+                <option value="normal">Normal workload</option>
+                <option value="flash_crowd">Flash crowd spike</option>
+                <option value="sudden_permanent_increase">
+                  Sudden permanent increase
+                </option>
+                <option value="pattern_drift">Pattern drift</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="strategy-select">Scaling strategy</label>
+              <select id="strategy-select">
+                <option value="reactive">Reactive autoscaling (baseline)</option>
+                <option value="predictive">Predictive autoscaling</option>
+                <option value="predictive_with_fallback">
+                  Predictive + confidence fallback
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="run-btn">
+              ▶ Start simulation
+            </button>
+            <button id="demo-btn" class="secondary">
+              ✨ Demo mode (all scenarios)
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="panel">
+          <h2>Time-Series Dynamics</h2>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-title">
+                <span>Workload vs prediction</span>
+              </div>
+              <canvas id="workloadChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">
+                <span>Number of pods</span>
+              </div>
+              <canvas id="podsChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">
+                <span>Response latency (ms)</span>
+              </div>
+              <canvas id="latencyChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">
+                <span>SLA violations</span>
+              </div>
+              <canvas id="slaChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel">
+          <h2>Experiment Summary</h2>
+          <div class="run-context" id="run-context">
+            Ready. Choose a scenario and scaling strategy, then start a simulation.
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Total SLA violations</div>
+              <div class="metric-value bad" id="metric-sla">–</div>
+              <div class="metric-sub">Timesteps above the latency SLA.</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Average latency</div>
+              <div class="metric-value" id="metric-latency">–</div>
+              <div class="metric-sub">Mean end-to-end response time.</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Over-provisioning</div>
+              <div class="metric-value" id="metric-over">–</div>
+              <div class="metric-sub">
+                Fraction of timesteps with more pods than required.
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Under-provisioning</div>
+              <div class="metric-value bad" id="metric-under">–</div>
+              <div class="metric-sub">
+                Fraction of timesteps with too few pods.
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Scaling latency</div>
+              <div class="metric-value" id="metric-latency-steps">–</div>
+              <div class="metric-sub">
+                Steps to reach new required pod level after a jump in load.
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Configuration</div>
+              <div class="metric-value" id="metric-config">–</div>
+              <div class="metric-sub">
+                Time horizon: 100 steps, synthetic model.
+              </div>
+            </div>
+          </div>
+          <div class="status" id="status-text"></div>
+        </aside>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  </body>
+  </html>
+

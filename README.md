@@ -11,6 +11,7 @@ This project provides a **reproducible experimental framework** to study how pre
 - **Load generator (`load-generator/`)**: Python script that drives the app with different workload patterns (periodic, flash crowd, permanent step increase, pattern drift).
 - **Experiments (`experiments/`)**: Scripts to deploy the stack, run scenarios under reactive vs predictive scaling, and collect metrics.
 - **Metrics & analysis (`metrics/`, `notebooks/`)**: CSV logs and plotting/analysis scripts for SLA violations, over/under-provisioning, scaling latency, and utilization.
+- **Simulation dashboard (`web/`, `simulation/`)**: Lightweight, self-contained web UI to demonstrate predictive vs reactive auto-scaling behavior without Kubernetes.
 
 Project layout:
 
@@ -24,6 +25,8 @@ predictive-autoscaling/
 ├── experiments/        # Orchestration scripts
 ├── metrics/            # Collected metrics and plots
 ├── notebooks/          # Optional Jupyter analysis
+├── simulation/         # In-memory simulation + auto-scaling logic for the dashboard
+├── web/                # Flask+Chart.js simulation dashboard (no Kubernetes required)
 └── README.md
 ```
 
@@ -141,7 +144,50 @@ The analysis scripts and notebook help diagnose:
 
 The provided predictive scaler implements a **confidence-aware fallback**: when forecast uncertainty is high, it reverts to a simple reactive estimate of replicas based on current request rate.
 
-### 8. Next Steps
+### 8. Interactive Simulation Dashboard (No Kubernetes Required)
+
+For presentations or quick experimentation without spinning up Kubernetes, this repository includes a **self-contained web-based simulation dashboard** that mimics the behavior of reactive vs predictive auto-scaling under abrupt workload changes.
+
+#### Run the dashboard
+
+```bash
+cd predictive-autoscaling
+python web/app.py
+```
+
+This will start a local Flask server at `http://localhost:5000` and automatically open the dashboard in your default browser.
+
+#### Dashboard features
+
+- **Scenario selector**:
+  - *Normal workload* (smooth sinusoidal traffic)
+  - *Flash crowd spike* (short, intense spike)
+  - *Sudden permanent increase* (step-change to a higher level)
+  - *Pattern drift* (gradually increasing baseline)
+- **Scaling strategy selector**:
+  - Reactive autoscaling (baseline)
+  - Predictive autoscaling
+  - Predictive + confidence-aware fallback (revert to reactive on high prediction error)
+- **Start simulation**: runs a 100-timestep in-memory simulation and streams results to the UI.
+- **Demo mode**: automatically runs all four scenarios sequentially for the selected strategy—useful for live research demos.
+
+The dashboard visualizes:
+
+- Workload vs predicted workload over time.
+- Number of pods over time.
+- Response latency vs a fixed SLA threshold.
+- SLA violation indicator (per timestep).
+
+It also summarizes:
+
+- Total SLA-violating timesteps.
+- Average latency.
+- Over- and under-provisioning percentages (fraction of timesteps with too many / too few pods).
+- Average scaling latency in timesteps (how long it takes to reach a new required replica level after a jump in true load).
+
+Under the hood, the dashboard uses `simulation/` for a simplified, in-memory model of request rate, predictions, and scaling decisions, and `web/` for a small Flask backend plus an HTML/JavaScript frontend built with Chart.js.
+
+### 9. Next Steps
 
 - Swap ARIMA for LSTM or Prophet in `predictor/` to study model class impact.
 - Extend the app complexity (e.g., database calls) to study end-to-end latency.
